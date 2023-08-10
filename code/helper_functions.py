@@ -81,3 +81,6 @@ def get_lcd(fname):
             mask=cv2.rectangle(frame.copy(), upper_left, bottom_right, (0, 0, 0),-1)
             final_img=frame-mask    
             return final_img
+    else: 
+        print("Image not found")
+        return None
