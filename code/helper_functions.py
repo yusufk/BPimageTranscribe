@@ -71,10 +71,10 @@ def get_lcd(fname):
                 coord=int(str(x)[:2])
                 prevb=aspect_ratio
         if bp_cnt!=[]:
-            print(fname)
+            #print(fname)
             cnt2=max(bp_cnt, key=cv2.contourArea)
             x,y,w,h=cv2.boundingRect(cnt2)
-            print("BP",x,y,w,h,w*h,w/h, cv2.contourArea(cnt2))
+            #print("BP",x,y,w,h,w*h,w/h, cv2.contourArea(cnt2))
             upper_left = (int(w / 8), int(h / 16))
             bottom_right = (int(w * 7 / 8), int(h * 15 / 16))
             frame=inverse[y:y+h, x:x+w]
