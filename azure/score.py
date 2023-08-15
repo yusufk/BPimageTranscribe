@@ -4,6 +4,7 @@ import cv2
 import os
 from tensorflow.keras.models import load_model
 import PIL
+from PIL import Image
 from io import BytesIO
 from azureml.contrib.services.aml_request import AMLRequest, rawhttp
 from azureml.contrib.services.aml_response import AMLResponse
@@ -20,14 +21,14 @@ def adjust_gamma(image, gamma=1.0):
         table = np.array([((i / 255.0) ** invGamma) * 255 for i in np.arange(0, 256)])
         return cv2.LUT(image.astype(np.uint8), table.astype(np.uint8))
 
-def get_lcd(fname):
-    image=cv2.imread(fname)
+def get_lcd(image):
+    image=np.array(image)
     #Preprocess image under test
     if image is not None:
         #Convert image to grayscale
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        # gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         #Apply bilateral filter for smoothing test image(noise reduction), while preserving edges    
-        blurred = cv2.bilateralFilter(gray, 11, 11, 11)
+        blurred = cv2.bilateralFilter(image, 11, 11, 11)
         #Apply gamma correction to adjust image illumination
         gamma = adjust_gamma(blurred, gamma=0.7)
         #Apply adaptive thresholding with a mean neighborhood threshold calculation as image may have varying illuniation
@@ -50,7 +51,6 @@ def get_lcd(fname):
                 coord=int(str(x)[:2])
                 prevb=aspect_ratio
         if bp_cnt!=[]:
-            print(fname)
             cnt2=max(bp_cnt, key=cv2.contourArea)
             x,y,w,h=cv2.boundingRect(cnt2)
             print("BP",x,y,w,h,w*h,w/h, cv2.contourArea(cnt2))
@@ -67,7 +67,32 @@ def get_lcd(fname):
 
 def DataPrepImage(rawimage):
     preprocessed_img = get_lcd(rawimage)
-    return img
+    w, h=preprocessed_img.shape
+    top =  preprocessed_img[0:int(h/2),0:w]
+    top = Image.fromarray(top)
+    top = top.resize((180,80))
+    top = np.array(top)
+    top = top.reshape((top.shape[0],top.shape[1],1))
+    top_array = np.asarray([top])
+    sys_pred = network.predict(top_array)
+    for i in range(top_array.shape[0]):
+        pred_list_i = [np.argmax(pred[i]) for pred in sys_pred]
+        predicted_sys = 100* pred_list_i[0] + 10 * pred_list_i[1] + 1* pred_list_i[2]
+        if predicted_sys >= 1000:
+            predicted_sys = predicted_sys-1000
+    bottom = preprocessed_img[int(h/2):h,0:w]
+    bottom = Image.fromarray(bottom)
+    bottom = bottom.resize((180,80))
+    bottom = np.array(bottom)
+    bottom = bottom.reshape((bottom.shape[0],bottom.shape[1],1))
+    bottom_array = np.asarray([bottom])
+    dia_pred = network.predict(bottom_array)
+    for i in range(bottom_array.shape[0]):
+        pred_list_i = [np.argmax(pred[i]) for pred in dia_pred]
+        predicted_dia = 100* pred_list_i[0] + 10 * pred_list_i[1] + 1* pred_list_i[2]
+        if predicted_dia >= 1000:
+            predicted_dia = predicted_dia-1000
+    return predicted_sys, predicted_dia
 
 def init():
     global network    
@@ -79,7 +104,7 @@ def init():
     if (folder==None):
         folder = "."
 
-    model_path = os.path.join(folder, 'BPmonitorModel')
+    model_path = os.path.join(folder, 'best_model.h5')
 
     #On charge le model Keras
     network = load_model(model_path)
@@ -89,14 +114,13 @@ def run(request):
     if request.method == 'POST':
         reqBody = request.get_data(False)
         myImage = PIL.Image.open(BytesIO(reqBody))
+        #Convert image to grayscale
         myImage = myImage.convert('L')
 
-        #Dataprep de l'image
-        imgprepped = DataPrepImage(myImage)
+        #Prep and predict
+        sys_pred, dia_pred = DataPrepImage(myImage)
 
-        # make prediction  
-        embed = network.predict(imgprepped)
 
-        return {'emb':embed.tolist(),'imgpreped':imgprepped.tolist()}
+        return {"sys": str(sys_pred), "dia": str(dia_pred)}
     else:
         return AMLResponse("bad request, use POST", 500)
