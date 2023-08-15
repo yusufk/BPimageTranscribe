@@ -1,5 +1,5 @@
-# CNN-based LCD Transcription of Blood Pressure from a Mobile Phone Camera 
-[![DOI](https://zenodo.org/badge/315742449.svg)](https://zenodo.org/badge/latestdoi/315742449)
+# CNN-based LCD Transcription of Blood Pressure using Azure Machine Learning Studio 
+A fork of the original repository [BPimageTranscribe](https://github.com/cliffordlab/BPimageTranscribe) for the purpose of deploying the model on Azure as a service endpoint.
 
 This repository contains the source code for the work in this article:
 [SS Kulkarni, N Katebi, CE Valderrama, P Rohloff, GD Clifford, CNN-based LCD Transcription of Blood Pressure from a Mobile Phone Camera, Front. Artif. Intell., 4, 36, 21 May 2021](https://doi.org/10.3389/frai.2021.543176) as part of the Medicine and Public Health Special Edition on Reimagining Health Systems: leveraging AI/ML for Low- and Middle-Income Countries.
@@ -7,12 +7,21 @@ This repository contains the source code for the work in this article:
 Please cite the above article when using the code in this repository. 
 
  
-## Installation instructions:
-```install
-git clone https://github.com/cliffordlab/BPimageTranscribe.git
+## Deployment instructions:
+1. Create a new Azure Machine Learning Studio workspace.
+2. Create a new compute instance.
+3. Upload the model file [best_model.h5](Dataset/best_model.h5) to the compute instance.
+4. Create a new environment using the [Dockerfile](azure/Dockerfile) provided in this repository.
+5. Create a new endpoint using the [score.py](azure/score.py) and the custom environment created above.
+6. Test the endpoint using:
+```
+curl --location 'https://<your-endpoint>/score' \
+--header 'Content-Type: image/jpeg' \
+--header 'Authorization: Bearer <your-token>' \
+--data './Test_case/test_data/image3.jpg'
 ```
 
-### Requirements
+### Requirements for local testing:
 
 To install requirements:
 
