@@ -1,2 +1,4 @@
 *.pyc
 code/.venv/
+.ipynb_aml_checkpoints/
+.amlignore*
